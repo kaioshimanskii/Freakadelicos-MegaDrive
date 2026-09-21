@@ -11,7 +11,8 @@ static const char* CHAPTERS[9] = {
 
 static GameState state;
 static u16 selected=3, scene=0, objective=0, hp=3, timer=0, clearTimer=0;
-static s16 px=3, py=18, vy=0;\nstatic s16 playerX=24;
+static s16 px=3, py=18, vy=0;
+static s16 playerX=24;
 static bool grounded=TRUE;
 static u16 cooldown=0, oldJoy=0, walkTick=0;
 static Sprite* playerSprite=NULL;
@@ -177,7 +178,8 @@ static void startScene(u16 s)
     clearScreen();
     scene=s; objective=0; hp=3; timer=0; cooldown=0; walkTick=0;
     px=3; py=18; playerX=24; vy=0; grounded=TRUE;
-    drawSceneBackdrop();\n    VDP_drawText(CHAPTERS[scene],2,1);
+    drawSceneBackdrop();
+    VDP_drawText(CHAPTERS[scene],2,1);
     VDP_drawText("START PAUSA",27,1);
     if(scene==3) VDP_drawText("[TURCO]",28,18);
     if(scene==5 || scene==6) VDP_drawText("[GUGU]",28,18);
