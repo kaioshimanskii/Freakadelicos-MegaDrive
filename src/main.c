@@ -11,7 +11,7 @@ static const char* CHAPTERS[9] = {
 
 static GameState state;
 static u16 selected=3, scene=0, objective=0, hp=3, timer=0, clearTimer=0;
-static s16 px=3, py=18, vy=0;
+static s16 px=3, py=18, vy=0;\nstatic s16 playerX=24;
 static bool grounded=TRUE;
 static u16 cooldown=0, oldJoy=0, walkTick=0;
 static Sprite* playerSprite=NULL;
@@ -90,7 +90,6 @@ static void updatePlayerSprite(bool moved)
 {
     if(selected!=3 || !playerSprite) return;
 
-    s16 sx = px * 8;
     s16 sy = py * 8 - 20;
     u16 frame = 0;
 
@@ -104,8 +103,72 @@ static void updatePlayerSprite(bool moved)
     else
         frame = 0;
 
-    SPR_setPosition(playerSprite, sx, sy);
+    SPR_setPosition(playerSprite, playerX, sy);
     SPR_setFrame(playerSprite, frame);
+}
+
+static void drawSceneBackdrop(void)
+{
+    /* Temporary native Mega Drive scenery pass.
+       These are not the final converted backgrounds yet. */
+    switch(scene)
+    {
+        case 0:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x101629));
+            VDP_drawText("        .      *        .", 6, 6);
+            VDP_drawText("    /\\        /\\        /\\", 4, 10);
+            VDP_drawText("___/  \\______/  \\______/  \\___", 2, 20);
+            VDP_drawText("[ PORTAL ]", 29, 16);
+            break;
+        case 1:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x24162C));
+            VDP_drawText("  X            X            X", 5, 10);
+            VDP_drawText("========================================", 0, 20);
+            VDP_drawText("MARCAS NO CAMINHO", 11, 7);
+            break;
+        case 2:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x1B1F25));
+            VDP_drawText("       |     |       |     |", 5, 8);
+            VDP_drawText("____   |_____|   ____|_____|   ____", 2, 20);
+            VDP_drawText("      QUEDA / RUIDO / VENTO", 6, 11);
+            break;
+        case 3:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x2A1414));
+            VDP_drawText("############   ARENA   ############", 3, 8);
+            VDP_drawText("========================================", 0, 20);
+            VDP_drawText("                         [TURCO]", 4, 16);
+            break;
+        case 4:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x102529));
+            VDP_drawText("    O        O        O", 7, 10);
+            VDP_drawText("____|________|________|____________", 2, 20);
+            VDP_drawText("ESTACOES DE PULSO", 11, 7);
+            break;
+        case 5:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x1D2413));
+            VDP_drawText("  ?      ?      ?      ?      ?", 4, 10);
+            VDP_drawText("========================================", 0, 20);
+            VDP_drawText("PROCURE OS GUGUS", 12, 7);
+            break;
+        case 6:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x222222));
+            VDP_drawText("| | | | | | CORREDOR | | | | | |", 3, 8);
+            VDP_drawText("========================================", 0, 20);
+            VDP_drawText("                         [ELEVADOR]", 3, 16);
+            break;
+        case 7:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x17131E));
+            VDP_drawText("/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\", 5, 6);
+            VDP_drawText("  CAVERNA DAS PROFUNDEZAS", 8, 11);
+            VDP_drawText("\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/", 4, 20);
+            break;
+        case 8:
+            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x221329));
+            VDP_drawText("   *   *   *   LUZES   *   *   *", 4, 7);
+            VDP_drawText("========================================", 0, 20);
+            VDP_drawText("                         [ PALCO ]", 3, 16);
+            break;
+    }
 }
 
 static void startScene(u16 s)
@@ -113,8 +176,8 @@ static void startScene(u16 s)
     char h[40];
     clearScreen();
     scene=s; objective=0; hp=3; timer=0; cooldown=0; walkTick=0;
-    px=3; py=18; vy=0; grounded=TRUE;
-    VDP_drawText(CHAPTERS[scene],2,1);
+    px=3; py=18; playerX=24; vy=0; grounded=TRUE;
+    drawSceneBackdrop();\n    VDP_drawText(CHAPTERS[scene],2,1);
     VDP_drawText("START PAUSA",27,1);
     if(scene==3) VDP_drawText("[TURCO]",28,18);
     if(scene==5 || scene==6) VDP_drawText("[GUGU]",28,18);
@@ -122,7 +185,7 @@ static void startScene(u16 s)
     objectiveText();
 
     if(selected==3)
-        addLucasSprite(px*8, py*8-20);
+        addLucasSprite(playerX, py*8-20);
     else
         drawPlayerText();
 
@@ -143,7 +206,7 @@ static void hurt(void)
     if(hp) hp--;
     if(!hp)
     {
-        hp=3; px=3; py=18; vy=0; grounded=TRUE;
+        hp=3; px=3; py=18; playerX=24; vy=0; grounded=TRUE;
         VDP_drawText("MAIS UMA VEZ!",13,10);
         if(playerSprite) SPR_setFrame(playerSprite,14);
     }
