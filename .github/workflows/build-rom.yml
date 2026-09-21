@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Restore Lucas sprite asset
+        run: |
+          mkdir -p res
+          base64 -d assets/lucas.b64 > res/lucas.png
+          file res/lucas.png
       - name: Allow SGDK container writes
         run: chmod -R a+rwX .
       - name: Build ROM with SGDK
