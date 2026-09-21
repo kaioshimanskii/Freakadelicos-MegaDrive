@@ -1,1 +1,1 @@
-SPRITE spr_lucas "lucas.png" 4 4 NONE 0
+SPRITE spr_lucas "lucas.bmp" 4 4 NONE 0
