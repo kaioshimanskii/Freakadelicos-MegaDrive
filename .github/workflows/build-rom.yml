@@ -1,0 +1,23 @@
+name: Build Mega Drive ROM
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/stephane-d/sgdk:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ROM with SGDK
+        run: make -f "$GDK/makefile.gen"
+      - name: Check output
+        run: ls -lah out && test -f out/rom.bin
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: freakadelicos-rom
+          path: out/rom.bin
