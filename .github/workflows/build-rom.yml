@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install image converter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
       - name: Restore and convert Lucas sprite
         run: |
           mkdir -p res
