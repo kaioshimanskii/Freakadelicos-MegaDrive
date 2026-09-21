@@ -1,4 +1,5 @@
 #include <genesis.h>
+#include "resources.h"
 
 typedef enum { ST_TITLE, ST_SELECT, ST_PLAY, ST_PAUSE, ST_CLEAR, ST_END } GameState;
 
@@ -12,12 +13,15 @@ static GameState state;
 static u16 selected=3, scene=0, objective=0, hp=3, timer=0, clearTimer=0;
 static s16 px=3, py=18, vy=0;
 static bool grounded=TRUE;
-static u16 cooldown=0, oldJoy=0;
+static u16 cooldown=0, oldJoy=0, walkTick=0;
+static Sprite* playerSprite=NULL;
 
 static void clearScreen(void)
 {
     VDP_clearPlane(BG_A, TRUE);
     VDP_clearPlane(BG_B, TRUE);
+    SPR_reset();
+    playerSprite=NULL;
 }
 
 static void title(void)
@@ -30,24 +34,29 @@ static void title(void)
     state=ST_TITLE;
 }
 
+static void addLucasSprite(s16 x, s16 y)
+{
+    PAL_setPalette(PAL1, spr_lucas.palette->data, DMA);
+    playerSprite = SPR_addSprite(&spr_lucas, x, y, TILE_ATTR(PAL1, TRUE, FALSE, FALSE));
+    SPR_setFrame(playerSprite, 0);
+}
+
 static void selectChar(void)
 {
     char b[32];
     clearScreen();
     VDP_drawText("ESCOLHA SEU PERSONAGEM",8,4);
     sprintf(b,"<  %s  >",NAMES[selected]);
-    VDP_drawText(b,14,12);
-    VDP_drawText("ESQUERDA / DIREITA",10,18);
-    VDP_drawText("START / A CONFIRMA",10,22);
-    state=ST_SELECT;
-}
+    VDP_drawText(b,14,18);
+    VDP_drawText("ESQUERDA / DIREITA",10,22);
+    VDP_drawText("START / A CONFIRMA",10,25);
 
-static void drawPlayer(void)
-{
-    char b[16];
-    VDP_clearTextArea(0,13,40,8);
-    sprintf(b,"[%s]",NAMES[selected]);
-    VDP_drawText(b,px,py);
+    if(selected==3)
+        addLucasSprite(144,96);
+    else
+        VDP_drawText("[SPRITE EM CONVERSAO]",10,12);
+
+    state=ST_SELECT;
 }
 
 static void objectiveText(void)
@@ -68,11 +77,42 @@ static void objectiveText(void)
     }
 }
 
+static void drawPlayerText(void)
+{
+    char b[16];
+    if(selected==3) return;
+    VDP_clearTextArea(0,13,40,8);
+    sprintf(b,"[%s]",NAMES[selected]);
+    VDP_drawText(b,px,py);
+}
+
+static void updatePlayerSprite(bool moved)
+{
+    if(selected!=3 || !playerSprite) return;
+
+    s16 sx = px * 8;
+    s16 sy = py * 8 - 20;
+    u16 frame = 0;
+
+    if(!grounded)
+        frame = (vy < 0) ? 9 : 10;
+    else if(moved)
+    {
+        walkTick++;
+        frame = 1 + ((walkTick >> 2) & 3);
+    }
+    else
+        frame = 0;
+
+    SPR_setPosition(playerSprite, sx, sy);
+    SPR_setFrame(playerSprite, frame);
+}
+
 static void startScene(u16 s)
 {
     char h[40];
     clearScreen();
-    scene=s; objective=0; hp=3; timer=0; cooldown=0;
+    scene=s; objective=0; hp=3; timer=0; cooldown=0; walkTick=0;
     px=3; py=18; vy=0; grounded=TRUE;
     VDP_drawText(CHAPTERS[scene],2,1);
     VDP_drawText("START PAUSA",27,1);
@@ -80,7 +120,12 @@ static void startScene(u16 s)
     if(scene==5 || scene==6) VDP_drawText("[GUGU]",28,18);
     sprintf(h,"VIDA %u",hp); VDP_drawText(h,2,3);
     objectiveText();
-    drawPlayer();
+
+    if(selected==3)
+        addLucasSprite(px*8, py*8-20);
+    else
+        drawPlayerText();
+
     state=ST_PLAY;
 }
 
@@ -100,6 +145,7 @@ static void hurt(void)
     {
         hp=3; px=3; py=18; vy=0; grounded=TRUE;
         VDP_drawText("MAIS UMA VEZ!",13,10);
+        if(playerSprite) SPR_setFrame(playerSprite,14);
     }
 }
 
@@ -131,7 +177,8 @@ static void gameplay(u16 joy, u16 pressed)
         if(py>=18){py=18;vy=0;grounded=TRUE;}
     }
 
-    if(moved || !grounded) drawPlayer();
+    if(selected==3) updatePlayerSprite(moved);
+    else if(moved || !grounded) drawPlayerText();
 
     switch(scene)
     {
@@ -198,6 +245,7 @@ int main(bool hardReset)
 {
     JOY_init();
     JOY_setSupport(PORT_1, JOY_SUPPORT_3BTN);
+    SPR_init();
     title();
 
     while(TRUE)
@@ -241,6 +289,7 @@ int main(bool hardReset)
         }
 
         oldJoy=joy;
+        SPR_update();
         SYS_doVBlankProcess();
     }
     return 0;
