@@ -81,7 +81,7 @@ for dat in sorted(DATA.glob("*.dat")):
 
         w = int(sw)
         h = int(sh)
-        blob = zlib.decompress(base64.b64decode(payload))
+        try:\n            blob = zlib.decompress(base64.b64decode(payload))\n        except (zlib.error, ValueError):\n            continue
         palette = blob[:48]
         raw = blob[48:]
 
@@ -92,4 +92,4 @@ for dat in sorted(DATA.glob("*.dat")):
             raw, w, h = expand2(raw, w, h)
 
         write_bmp(RES / f"{name}.bmp", w, h, palette, raw)
-        print(f"generated {name}.bmp {w}x{h}")
+        generated.add(name)\n        print(f"generated {name}.bmp {w}x{h}")\n\nmissing = WANTED - generated\nif missing:\n    raise RuntimeError(f"Missing assets: {sorted(missing)}")
