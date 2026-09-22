@@ -42,8 +42,8 @@ static const char* const ROLES[5] =
 static const DialogEntry DIALOG_INTRO[] =
 {
     {"KAIO", "Terceiro sinal. Todo mundo no palco.", "", "", ""},
-    {"KAIO", "Setas: andar. Z: pular.", "X: interagir.", "", ""},
-    {"KAIO", "A, S, D, Q e W escolhem os", "integrantes. Vou tirar o pano.", "", ""}
+    {"KAIO", "DIRECIONAL: ANDAR. A: PULAR.", "B: INTERAGIR.", "", ""},
+    {"KAIO", "C TROCA O INTEGRANTE.", "Vou tirar o pano.", "", ""}
 };
 
 static const DialogEntry DIALOG_QUADRO[] =
@@ -68,7 +68,7 @@ static u16 dialogCount = 0;
 static u16 dialogAfter = 0;
 
 static s16 playerX = 28;
-static s16 playerY = 164;
+static s16 playerY = 156;
 static s16 vy = 0;
 static bool grounded = TRUE;
 static bool faceLeft = FALSE;
@@ -147,7 +147,7 @@ static void drawTopHud(void)
     VDP_clearTextArea(0, 0, 40, 5);
     VDP_drawText("GUGU DADA", 1, 1);
     VDP_drawText(NAMES[selected], 18, 1);
-    VDP_drawText("A PULA  B=X  C TROCA  START PAUSA", 1, 3);
+    VDP_drawText("A PULA  B INTERAGE  C TROCA", 2, 3);\n    VDP_drawText("START PAUSA", 14, 4);
 }
 
 static void drawMarker(void)
@@ -258,7 +258,7 @@ static void titleScreen(void)
 
     VDP_drawText("FREAKADELICOS", 13, 3);
     VDP_drawText("NAS PROFUNDEZAS DO NADA", 8, 6);
-    VDP_drawText("UMA AVENTURA LIBERATISTA", 8, 8);
+    VDP_drawText("UMA AVENTURA LIBERATISTA", 8, 8);\n    VDP_drawText("START: MENU", 14, 11);
 
     VDP_drawText(menuIndex == 0 ? "> NOVO JOGO" : "  NOVO JOGO", 12, 18);
     VDP_drawText(menuIndex == 1 ? "> CONTINUAR" : "  CONTINUAR", 12, 20);
@@ -278,14 +278,14 @@ static void selectScreen(void)
     VDP_drawText("ESCOLHA SEU PERSONAGEM", 8, 5);
 
     playerX = 144;
-    playerY = 116;
+    playerY = 108;
     spawnPlayer();
 
     VDP_drawText("<", 9, 17);
     VDP_drawText(">", 30, 17);
     VDP_drawText(NAMES[selected], 17, 20);
     VDP_drawText(ROLES[selected], 13, 22);
-    VDP_drawText("SETAS / B OU START", 11, 25);
+    VDP_drawText("DIRECIONAL ESCOLHE", 10, 24);\n    VDP_drawText("START CONFIRMA", 13, 26);
 
     state = ST_SELECT;
 }
@@ -299,7 +299,7 @@ static void startFirstScene(void)
     phase = 0;
     walkTick = 0;
     playerX = 28;
-    playerY = 164;
+    playerY = 156;
     vy = 0;
     grounded = TRUE;
     faceLeft = FALSE;
@@ -358,7 +358,7 @@ static void interact(void)
             return;
         }
 
-        beginDialog(DIALOG_QUADRO, 2, 2);
+        PAL_setPalette(PAL0, img_encounter.palette->data, DMA);\n        VDP_drawImageEx(BG_B, &img_encounter, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, TILE_USER_INDEX), 0, 0, FALSE, TRUE);\n        beginDialog(DIALOG_QUADRO, 2, 2);
         return;
     }
 
