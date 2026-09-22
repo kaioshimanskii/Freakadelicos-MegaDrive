@@ -10,4 +10,4 @@ IMAGE img_cover "cover.bmp" NONE
 IMAGE img_stage "stage.bmp" NONE
 IMAGE img_encounter "encounter.bmp" NONE
 IMAGE img_cave "cave.bmp" NONE
-IMAGE img_ending "ending_md.bmp" NONE
+IMAGE img_ending "cover.bmp" NONE
