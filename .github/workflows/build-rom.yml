@@ -11,9 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify asset payloads
+        run: sha256sum assets_v4/*.dat
+
       - name: Generate original Freakadelicos art
         run: |
-          sha256sum assets_v4/*.dat\n          python3 tools/build_assets_v4.py
+          python3 tools/build_assets_v4.py
           echo "=== GENERATED ASSETS ==="
           ls -lh res/*.bmp
 
