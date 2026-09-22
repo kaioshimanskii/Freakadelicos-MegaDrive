@@ -10,16 +10,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild Lucas BMP
-        run: python3 tools/build_lucas_bmp.py
+
+      - name: Restore original Freakadelicos art
+        run: |
+          cat assets/chunk_00.b64 assets/chunk_01.b64 assets/chunk_02.b64 assets/chunk_03.b64 assets/chunk_04.b64 assets/chunk_05.b64 assets/chunk_06.b64 assets/chunk_07.b64 assets/chunk_08.b64 > /tmp/freak_art.b64
+          base64 -d /tmp/freak_art.b64 > /tmp/freak_art.zip
+          unzip -t /tmp/freak_art.zip
+          unzip -o /tmp/freak_art.zip -d res
+          echo "=== RESTORED ASSETS ==="
+          ls -lh res
+          test -f res/kaio.bmp
+          test -f res/nico.bmp
+          test -f res/rod.bmp
+          test -f res/lucas.bmp
+          test -f res/mila.bmp
+          test -f res/guguwhite.bmp
+          test -f res/guguyellow.bmp
+          test -f res/turco.bmp
+          test -f res/cover.bmp
+          test -f res/stage.bmp
+          test -f res/encounter.bmp
+          test -f res/cave.bmp
+          test -f res/ending_md.bmp
+
       - name: Allow SGDK container writes
         run: chmod -R a+rwX .
+
       - name: Build ROM with SGDK
         run: docker run --rm -v "$PWD:/m68k" -t ghcr.io/rhargreaves/docker-sgdk:v2.00
+
       - name: Check output
-        run: ls -lah out && test -f out/rom.bin
+        run: |
+          ls -lah out
+          test -f out/rom.bin
+          cp out/rom.bin out/Freakadelicos_MegaDrive_SGDK_v4_ORIGINAL_ART.bin
+
       - name: Upload ROM
         uses: actions/upload-artifact@v4
         with:
-          name: freakadelicos-rom
-          path: out/rom.bin
+          name: freakadelicos-v4-original-art
+          path: |
+            out/rom.bin
+            out/Freakadelicos_MegaDrive_SGDK_v4_ORIGINAL_ART.bin
