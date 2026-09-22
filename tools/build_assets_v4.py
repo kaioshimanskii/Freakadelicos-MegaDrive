@@ -8,8 +8,8 @@ DATA = ROOT / "assets_v4"
 RES = ROOT / "res"
 RES.mkdir(exist_ok=True)
 
-BG_NAMES = {"stage", "encounter", "cave"}
-WANTED = {"stage", "encounter", "cave", "kaio", "nico", "rod", "lucas", "mila", "guguyellow", "turco"}
+BG_NAMES = {"cover", "stage", "encounter", "cave"}
+WANTED = {"cover", "stage", "encounter", "cave", "kaio", "nico", "rod", "lucas", "mila", "guguyellow", "turco"}
 
 def write_bmp(path, w, h, palette_rgb, pixels):
     pal = bytearray()
@@ -36,6 +36,21 @@ def write_bmp(path, w, h, palette_rgb, pixels):
         out += bytes(row_stride - w)
 
     path.write_bytes(out)
+
+def enlarge_sprite_sheet(raw, w, h):
+    if h != 32 or (w % 32) != 0:
+        return raw, w, h
+    cells = w // 32
+    out_w = cells * 40
+    out_h = 40
+    out = bytearray(out_w * out_h)
+    for ny in range(out_h):
+        sy = min(31, (ny * 32) // 40)
+        for cell in range(cells):
+            for nx in range(40):
+                sx = min(31, (nx * 32) // 40)
+                out[ny*out_w + cell*40 + nx] = raw[sy*w + cell*32 + sx]
+    return bytes(out), out_w, out_h
 
 def expand2(raw, w, h):
     out_w = w * 2
