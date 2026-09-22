@@ -13,7 +13,7 @@ jobs:
 
       - name: Generate original Freakadelicos art
         run: |
-          python3 tools/build_assets_v4.py
+          sha256sum assets_v4/*.dat\n          python3 tools/build_assets_v4.py
           echo "=== GENERATED ASSETS ==="
           ls -lh res/*.bmp
 
