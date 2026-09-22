@@ -86,7 +86,12 @@ for dat in sorted(DATA.glob("*.dat")):
             continue
 
         try:
-            blob = zlib.decompress(base64.b64decode(payload))
+            packed = base64.b64decode(payload)
+            try:
+                blob = zlib.decompress(packed)
+            except zlib.error:
+                # Some recovered banks have a bad Adler checksum but valid deflate data.
+                blob = zlib.decompress(packed[2:-4], -15)
         except (zlib.error, ValueError):
             continue
 
