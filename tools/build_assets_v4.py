@@ -9,7 +9,7 @@ RES = ROOT / "res"
 RES.mkdir(exist_ok=True)
 
 BG_NAMES = {"stage", "encounter", "cave"}
-WANTED = {"stage", "encounter", "cave", "kaio", "nico", "rod", "lucas", "mila", "guguwhite", "guguyellow", "turco"}
+WANTED = {"stage", "encounter", "cave", "kaio", "nico", "rod", "lucas", "mila", "guguyellow", "turco"}
 
 def write_bmp(path, w, h, palette_rgb, pixels):
     pal = bytearray()
