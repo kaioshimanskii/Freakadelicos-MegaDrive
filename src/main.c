@@ -33,6 +33,8 @@ static bool faceLeft = FALSE;
 static Sprite* player = NULL;
 static Sprite* npc = NULL;
 
+static s16 abs16(s16 v) { return (v < 0) ? -v : v; }
+
 static void setupText(void)
 {
     VDP_setTextPalette(PAL3);
@@ -79,7 +81,8 @@ static void spawnPlayer(s16 x, s16 y)
 static void titleScreen(void)
 {
     clearAll();
-    drawImageBG(&img_cover);
+    PAL_setColor(0, RGB24_TO_VDPCOLOR(0x000000));
+    VDP_clearPlane(BG_B, TRUE);
     setupText();
     VDP_drawText("FREAKADELICOS", 13, 3);
     VDP_drawText("NAS PROFUNDEZAS DO NADA", 8, 6);
@@ -340,7 +343,7 @@ static void gameplay(u16 joy, u16 pressed)
         {
             const s16 marks[3] = {85, 160, 240};
             if (objective < 3 &&
-                ABS(playerX - marks[objective]) < 18 &&
+                abs16(playerX - marks[objective]) < 18 &&
                 (pressed & BUTTON_B) &&
                 !cooldown)
             {
@@ -377,7 +380,7 @@ static void gameplay(u16 joy, u16 pressed)
         {
             const s16 stations[3] = {75, 155, 240};
             if (objective < 3 &&
-                ABS(playerX - stations[objective]) < 18 &&
+                abs16(playerX - stations[objective]) < 18 &&
                 (pressed & BUTTON_B) &&
                 !cooldown)
             {
@@ -392,7 +395,7 @@ static void gameplay(u16 joy, u16 pressed)
         }
 
         case 5:
-            if (ABS(playerX - (70 + rescueCount * 42)) < 22 &&
+            if (abs16(playerX - (70 + rescueCount * 42)) < 22 &&
                 rescueCount < 5 &&
                 (pressed & BUTTON_B) &&
                 !cooldown)
@@ -426,7 +429,7 @@ static void gameplay(u16 joy, u16 pressed)
 static void endingScreen(void)
 {
     clearAll();
-    drawImageBG(&img_ending);
+    drawImageBG(&img_stage);
     setupText();
 
     VDP_drawText("FIM", 18, 2);
