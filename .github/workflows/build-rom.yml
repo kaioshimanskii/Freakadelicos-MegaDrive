@@ -30,12 +30,9 @@ jobs:
         run: |
           ls -lah out
           test -f out/rom.bin
-          cp out/rom.bin out/Freakadelicos_MegaDrive_SGDK_v4_ORIGINAL_ART.bin
 
       - name: Upload ROM
         uses: actions/upload-artifact@v4
         with:
           name: freakadelicos-v4-original-art
-          path: |
-            out/rom.bin
-            out/Freakadelicos_MegaDrive_SGDK_v4_ORIGINAL_ART.bin
+          path: out/rom.bin
