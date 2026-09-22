@@ -3,307 +3,437 @@
 
 typedef enum { ST_TITLE, ST_SELECT, ST_PLAY, ST_PAUSE, ST_CLEAR, ST_END } GameState;
 
-static const char* NAMES[5] = {"KAIO","NICO","ROD","LUCAS","MILA"};
-static const char* CHAPTERS[9] = {
+static const SpriteDefinition* const PLAYER_DEFS[5] = {
+    &spr_kaio, &spr_nico, &spr_rod, &spr_lucas, &spr_mila
+};
+static const char* const NAMES[5] = {"KAIO","NICO","ROD","LUCAS","MILA"};
+static const char* const CHAPTERS[9] = {
     "01 O CHAMADO","02 AS MARCAS","03 A QUEDA","04 TURCO","05 O PULSO",
     "06 OS GUGUS","07 CORREDOR BRANCO","08 A CAVERNA","09 O SHOW"
 };
 
-static GameState state;
-static u16 selected=3, scene=0, objective=0, hp=3, timer=0, clearTimer=0;
-static s16 px=3, py=18, vy=0;
-static s16 playerX=24;
-static bool grounded=TRUE;
-static u16 cooldown=0, oldJoy=0, walkTick=0;
-static Sprite* playerSprite=NULL;
+static GameState state = ST_TITLE;
+static u16 selected = 3;
+static u16 scene = 0;
+static u16 objective = 0;
+static u16 hp = 3;
+static u16 timer = 0;
+static u16 clearTimer = 0;
+static u16 cooldown = 0;
+static u16 oldJoy = 0;
+static u16 walkTick = 0;
+static u16 rescueCount = 0;
 
-static void clearScreen(void)
+static s16 playerX = 24;
+static s16 playerY = 164;
+static s16 vy = 0;
+static bool grounded = TRUE;
+static bool faceLeft = FALSE;
+
+static Sprite* player = NULL;
+static Sprite* npc = NULL;
+
+static void setupText(void)
+{
+    VDP_setTextPalette(PAL3);
+    PAL_setColor((PAL3 * 16) + 15, RGB24_TO_VDPCOLOR(0xFFFFFF));
+}
+
+static void clearAll(void)
 {
     VDP_clearPlane(BG_A, TRUE);
     VDP_clearPlane(BG_B, TRUE);
     SPR_reset();
-    playerSprite=NULL;
+    player = NULL;
+    npc = NULL;
 }
 
-static void title(void)
+static void drawImageBG(const Image* img)
 {
-    clearScreen();
-    VDP_drawText("FREAKADELICOS",13,4);
-    VDP_drawText("NAS PROFUNDEZAS DO NADA",8,7);
-    VDP_drawText("PORT NATIVO MEGA DRIVE / SGDK",5,11);
-    VDP_drawText("START OU A",15,22);
-    state=ST_TITLE;
+    PAL_setPalette(PAL0, img->palette->data, DMA);
+    VDP_drawImageEx(
+        BG_B,
+        img,
+        TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, TILE_USER_INDEX),
+        0, 0,
+        FALSE,
+        TRUE
+    );
 }
 
-static void addLucasSprite(s16 x, s16 y)
+static void drawSceneImage(void)
 {
-    PAL_setPalette(PAL1, spr_lucas.palette->data, DMA);
-    playerSprite = SPR_addSprite(&spr_lucas, x, y, TILE_ATTR(PAL1, TRUE, FALSE, FALSE));
-    SPR_setFrame(playerSprite, 0);
+    if (scene == 3) drawImageBG(&img_encounter);
+    else if (scene == 7) drawImageBG(&img_cave);
+    else drawImageBG(&img_stage);
 }
 
-static void selectChar(void)
+static void spawnPlayer(s16 x, s16 y)
+{
+    const SpriteDefinition* def = PLAYER_DEFS[selected];
+    PAL_setPalette(PAL1, def->palette->data, DMA);
+    player = SPR_addSprite(def, x, y, TILE_ATTR(PAL1, TRUE, FALSE, FALSE));
+    SPR_setFrame(player, 0);
+}
+
+static void titleScreen(void)
+{
+    clearAll();
+    drawImageBG(&img_cover);
+    setupText();
+    VDP_drawText("FREAKADELICOS", 13, 3);
+    VDP_drawText("NAS PROFUNDEZAS DO NADA", 8, 6);
+    VDP_drawText("START / A", 15, 23);
+    state = ST_TITLE;
+}
+
+static void selectScreen(void)
 {
     char b[32];
-    clearScreen();
-    VDP_drawText("ESCOLHA SEU PERSONAGEM",8,4);
-    sprintf(b,"<  %s  >",NAMES[selected]);
-    VDP_drawText(b,14,18);
-    VDP_drawText("ESQUERDA / DIREITA",10,22);
-    VDP_drawText("START / A CONFIRMA",10,25);
 
-    if(selected==3)
-        addLucasSprite(144,96);
-    else
-        VDP_drawText("[SPRITE EM CONVERSAO]",10,12);
+    clearAll();
+    drawImageBG(&img_stage);
+    setupText();
 
-    state=ST_SELECT;
+    VDP_drawText("ESCOLHA SEU PERSONAGEM", 8, 2);
+    VDP_drawText("<                >", 10, 23);
+    VDP_drawText("START / A CONFIRMA", 10, 25);
+
+    PAL_setPalette(PAL1, PLAYER_DEFS[selected]->palette->data, DMA);
+    player = SPR_addSprite(PLAYER_DEFS[selected], 144, 92, TILE_ATTR(PAL1, TRUE, FALSE, FALSE));
+    SPR_setFrame(player, 0);
+
+    sprintf(b, "%s", NAMES[selected]);
+    VDP_drawText(b, 17, 19);
+
+    state = ST_SELECT;
 }
 
 static void objectiveText(void)
 {
     char b[40];
-    VDP_clearTextArea(0,22,40,4);
-    switch(scene)
-    {
-        case 0: VDP_drawText("CHEGUE AO FIM E APERTE B",7,23); break;
-        case 1: sprintf(b,"MARCAS %u/3 - B PARA ATIVAR",objective); VDP_drawText(b,6,23); break;
-        case 2: VDP_drawText("ATRAVESSE A QUEDA",10,23); break;
-        case 3: sprintf(b,"TURCO %u/5 - ATAQUE COM C",objective); VDP_drawText(b,7,23); break;
-        case 4: sprintf(b,"PULSOS %u/3 - B PARA ATIVAR",objective); VDP_drawText(b,6,23); break;
-        case 5: sprintf(b,"GUGUS %u/5 - RESGATE COM B",objective); VDP_drawText(b,7,23); break;
-        case 6: VDP_drawText("LEVE GUGU ATE O ELEVADOR",7,23); break;
-        case 7: VDP_drawText("FUJA DA CAVERNA",12,23); break;
-        case 8: VDP_drawText("CHEGUE AO PALCO E APERTE B",6,23); break;
-    }
-}
 
-static void drawPlayerText(void)
-{
-    char b[16];
-    if(selected==3) return;
-    VDP_clearTextArea(0,13,40,8);
-    sprintf(b,"[%s]",NAMES[selected]);
-    VDP_drawText(b,px,py);
-}
+    VDP_clearTextArea(0, 23, 40, 3);
 
-static void updatePlayerSprite(bool moved)
-{
-    if(selected!=3 || !playerSprite) return;
-
-    s16 sy = py * 8 - 20;
-    u16 frame = 0;
-
-    if(!grounded)
-        frame = (vy < 0) ? 9 : 10;
-    else if(moved)
-    {
-        walkTick++;
-        frame = 1 + ((walkTick >> 2) & 3);
-    }
-    else
-        frame = 0;
-
-    SPR_setPosition(playerSprite, playerX, sy);
-    SPR_setFrame(playerSprite, frame);
-}
-
-static void drawSceneBackdrop(void)
-{
-    /* Temporary native Mega Drive scenery pass.
-       These are not the final converted backgrounds yet. */
-    switch(scene)
+    switch (scene)
     {
         case 0:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x101629));
-            VDP_drawText("        .      *        .", 6, 6);
-            VDP_drawText("    /\\        /\\        /\\", 4, 10);
-            VDP_drawText("___/  \\______/  \\______/  \\___", 2, 20);
-            VDP_drawText("[ PORTAL ]", 29, 16);
+            VDP_drawText("CHEGUE AO PORTAL E APERTE B", 4, 24);
             break;
         case 1:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x24162C));
-            VDP_drawText("  X            X            X", 5, 10);
-            VDP_drawText("========================================", 0, 20);
-            VDP_drawText("MARCAS NO CAMINHO", 11, 7);
+            sprintf(b, "MARCAS %u/3 - B PARA ATIVAR", objective);
+            VDP_drawText(b, 6, 24);
             break;
         case 2:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x1B1F25));
-            VDP_drawText("       |     |       |     |", 5, 8);
-            VDP_drawText("____   |_____|   ____|_____|   ____", 2, 20);
-            VDP_drawText("      QUEDA / RUIDO / VENTO", 6, 11);
+            VDP_drawText("ATRAVESSE A QUEDA", 10, 24);
             break;
         case 3:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x2A1414));
-            VDP_drawText("############   ARENA   ############", 3, 8);
-            VDP_drawText("========================================", 0, 20);
-            VDP_drawText("                         [TURCO]", 4, 16);
+            sprintf(b, "TURCO %u/5 - ATAQUE COM C", objective);
+            VDP_drawText(b, 7, 24);
             break;
         case 4:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x102529));
-            VDP_drawText("    O        O        O", 7, 10);
-            VDP_drawText("____|________|________|____________", 2, 20);
-            VDP_drawText("ESTACOES DE PULSO", 11, 7);
+            sprintf(b, "PULSOS %u/3 - B PARA ATIVAR", objective);
+            VDP_drawText(b, 6, 24);
             break;
         case 5:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x1D2413));
-            VDP_drawText("  ?      ?      ?      ?      ?", 4, 10);
-            VDP_drawText("========================================", 0, 20);
-            VDP_drawText("PROCURE OS GUGUS", 12, 7);
+            sprintf(b, "GUGUS %u/5 - RESGATE COM B", rescueCount);
+            VDP_drawText(b, 7, 24);
             break;
         case 6:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x222222));
-            VDP_drawText("| | | | | | CORREDOR | | | | | |", 3, 8);
-            VDP_drawText("========================================", 0, 20);
-            VDP_drawText("                         [ELEVADOR]", 3, 16);
+            VDP_drawText("LEVE GUGU ATE O ELEVADOR", 7, 24);
             break;
         case 7:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x17131E));
-            VDP_drawText("/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\", 5, 6);
-            VDP_drawText("  CAVERNA DAS PROFUNDEZAS", 8, 11);
-            VDP_drawText("\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/", 4, 20);
+            VDP_drawText("FUJA DA CAVERNA", 12, 24);
             break;
         case 8:
-            PAL_setColor(0, RGB24_TO_VDPCOLOR(0x221329));
-            VDP_drawText("   *   *   *   LUZES   *   *   *", 4, 7);
-            VDP_drawText("========================================", 0, 20);
-            VDP_drawText("                         [ PALCO ]", 3, 16);
+            VDP_drawText("CHEGUE AO PALCO E APERTE B", 6, 24);
             break;
-    }
-}
-
-static void startScene(u16 s)
-{
-    char h[40];
-    clearScreen();
-    scene=s; objective=0; hp=3; timer=0; cooldown=0; walkTick=0;
-    px=3; py=18; playerX=24; vy=0; grounded=TRUE;
-    drawSceneBackdrop();
-    VDP_drawText(CHAPTERS[scene],2,1);
-    VDP_drawText("START PAUSA",27,1);
-    if(scene==3) VDP_drawText("[TURCO]",28,18);
-    if(scene==5 || scene==6) VDP_drawText("[GUGU]",28,18);
-    sprintf(h,"VIDA %u",hp); VDP_drawText(h,2,3);
-    objectiveText();
-
-    if(selected==3)
-        addLucasSprite(playerX, py*8-20);
-    else
-        drawPlayerText();
-
-    state=ST_PLAY;
-}
-
-static void finishScene(void)
-{
-    VDP_drawText("FASE COMPLETA",14,12);
-    clearTimer=75;
-    state=ST_CLEAR;
-}
-
-static void hurt(void)
-{
-    if(cooldown) return;
-    cooldown=45;
-    if(hp) hp--;
-    if(!hp)
-    {
-        hp=3; px=3; py=18; playerX=24; vy=0; grounded=TRUE;
-        VDP_drawText("MAIS UMA VEZ!",13,10);
-        if(playerSprite) SPR_setFrame(playerSprite,14);
     }
 }
 
 static void updateHud(void)
 {
-    char h[16];
-    sprintf(h,"VIDA %u",hp);
-    VDP_clearText(2,3,10);
-    VDP_drawText(h,2,3);
+    char b[20];
+    VDP_clearText(1, 2, 12);
+    sprintf(b, "VIDA %u", hp);
+    VDP_drawText(b, 1, 2);
+}
+
+static void spawnNPC(void)
+{
+    if (scene == 3)
+    {
+        PAL_setPalette(PAL2, spr_turco.palette->data, DMA);
+        npc = SPR_addSprite(&spr_turco, 250, 164, TILE_ATTR(PAL2, TRUE, TRUE, FALSE));
+        SPR_setFrame(npc, 0);
+    }
+    else if (scene == 5)
+    {
+        PAL_setPalette(PAL2, spr_guguyellow.palette->data, DMA);
+        npc = SPR_addSprite(&spr_guguyellow, 225, 164, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        SPR_setFrame(npc, 0);
+    }
+    else if (scene == 6)
+    {
+        PAL_setPalette(PAL2, spr_guguwhite.palette->data, DMA);
+        npc = SPR_addSprite(&spr_guguwhite, 70, 164, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        SPR_setFrame(npc, 0);
+    }
+}
+
+static void startScene(u16 s)
+{
+    clearAll();
+
+    scene = s;
+    objective = 0;
+    rescueCount = 0;
+    hp = 3;
+    timer = 0;
+    cooldown = 0;
+    walkTick = 0;
+    playerX = 24;
+    playerY = 164;
+    vy = 0;
+    grounded = TRUE;
+    faceLeft = FALSE;
+
+    drawSceneImage();
+    setupText();
+
+    VDP_drawText(CHAPTERS[scene], 2, 1);
+    VDP_drawText("START PAUSA", 27, 1);
+
+    spawnPlayer(playerX, playerY);
+    spawnNPC();
+
+    objectiveText();
+    updateHud();
+
+    state = ST_PLAY;
+}
+
+static void finishScene(void)
+{
+    VDP_drawText("FASE COMPLETA", 14, 12);
+    clearTimer = 75;
+    state = ST_CLEAR;
+}
+
+static void hurt(void)
+{
+    if (cooldown) return;
+
+    cooldown = 45;
+    if (hp) hp--;
+
+    if (player) SPR_setFrame(player, 14);
+
+    if (!hp)
+    {
+        hp = 3;
+        playerX = 24;
+        playerY = 164;
+        vy = 0;
+        grounded = TRUE;
+        VDP_drawText("MAIS UMA VEZ!", 13, 11);
+    }
+
+    updateHud();
+}
+
+static void updatePlayerAnimation(bool moving)
+{
+    u16 frame = 0;
+
+    if (!grounded)
+        frame = (vy < 0) ? 9 : 10;
+    else if (moving)
+    {
+        walkTick++;
+        frame = 1 + ((walkTick >> 3) & 3);
+    }
+    else
+        frame = 0;
+
+    SPR_setFrame(player, frame);
+    SPR_setHFlip(player, faceLeft);
+}
+
+static void updateNPC(void)
+{
+    if (!npc) return;
+
+    if (scene == 3)
+    {
+        SPR_setFrame(npc, (timer >> 4) & 3);
+    }
+    else if (scene == 5)
+    {
+        s16 gx = 70 + (rescueCount * 42);
+        if (gx > 260) gx = 260;
+        SPR_setPosition(npc, gx, 164);
+        SPR_setFrame(npc, 1 + ((timer >> 3) & 3));
+    }
+    else if (scene == 6)
+    {
+        s16 gx = playerX - 28;
+        if (gx < 8) gx = 8;
+        SPR_setPosition(npc, gx, 164);
+        SPR_setFrame(npc, 1 + ((timer >> 3) & 3));
+    }
 }
 
 static void gameplay(u16 joy, u16 pressed)
 {
-    bool moved=FALSE;
+    bool moving = FALSE;
+
     timer++;
-    if(cooldown) cooldown--;
+    if (cooldown) cooldown--;
 
-    if(joy & BUTTON_LEFT)  { if(px>1) px--; moved=TRUE; }
-    if(joy & BUTTON_RIGHT) { if(px<32) px++; moved=TRUE; }
-
-    if(grounded && (pressed & BUTTON_A))
+    /* Smooth 1-pixel movement: deliberately slower than previous build. */
+    if (joy & BUTTON_LEFT)
     {
-        grounded=FALSE; vy=-3;
+        if (playerX > 8) playerX--;
+        faceLeft = TRUE;
+        moving = TRUE;
     }
-    if(!grounded)
+
+    if (joy & BUTTON_RIGHT)
     {
-        py += vy;
+        if (playerX < 280) playerX++;
+        faceLeft = FALSE;
+        moving = TRUE;
+    }
+
+    if (grounded && (pressed & BUTTON_A))
+    {
+        grounded = FALSE;
+        vy = -6;
+    }
+
+    if (!grounded)
+    {
+        playerY += vy;
         vy++;
-        if(py>=18){py=18;vy=0;grounded=TRUE;}
+
+        if (playerY >= 164)
+        {
+            playerY = 164;
+            vy = 0;
+            grounded = TRUE;
+        }
     }
 
-    if(selected==3) updatePlayerSprite(moved);
-    else if(moved || !grounded) drawPlayerText();
+    SPR_setPosition(player, playerX, playerY);
+    updatePlayerAnimation(moving);
+    updateNPC();
 
-    switch(scene)
+    switch (scene)
     {
         case 0:
-            if(px>=30 && (pressed&BUTTON_B)) finishScene();
+            if (playerX >= 265 && (pressed & BUTTON_B))
+                finishScene();
             break;
+
         case 1:
-            if((pressed&BUTTON_B) && !cooldown)
+        {
+            const s16 marks[3] = {85, 160, 240};
+            if (objective < 3 &&
+                ABS(playerX - marks[objective]) < 18 &&
+                (pressed & BUTTON_B) &&
+                !cooldown)
             {
-                objective++; cooldown=15; objectiveText();
-                if(objective>=3) finishScene();
+                objective++;
+                cooldown = 18;
+                objectiveText();
+
+                if (objective >= 3)
+                    finishScene();
             }
             break;
+        }
+
         case 2:
-            if((timer%150)==0) hurt();
-            if(px>=31) finishScene();
+            if ((timer % 180) == 0) hurt();
+            if (playerX >= 275) finishScene();
             break;
+
         case 3:
-            if((pressed&BUTTON_C) && px>=23 && !cooldown)
+            if (playerX >= 215 &&
+                (pressed & BUTTON_C) &&
+                !cooldown)
             {
-                objective++; cooldown=15; objectiveText();
-                if(objective>=5) finishScene();
+                objective++;
+                cooldown = 20;
+                objectiveText();
+
+                if (objective >= 5)
+                    finishScene();
             }
             break;
+
         case 4:
-            if((pressed&BUTTON_B) && !cooldown)
+        {
+            const s16 stations[3] = {75, 155, 240};
+            if (objective < 3 &&
+                ABS(playerX - stations[objective]) < 18 &&
+                (pressed & BUTTON_B) &&
+                !cooldown)
             {
-                objective++; cooldown=15; objectiveText();
-                if(objective>=3) finishScene();
+                objective++;
+                cooldown = 18;
+                objectiveText();
+
+                if (objective >= 3)
+                    finishScene();
             }
             break;
+        }
+
         case 5:
-            if((pressed&BUTTON_B) && px>=22 && !cooldown)
+            if (ABS(playerX - (70 + rescueCount * 42)) < 22 &&
+                rescueCount < 5 &&
+                (pressed & BUTTON_B) &&
+                !cooldown)
             {
-                objective++; cooldown=15; objectiveText();
-                if(objective>=5) finishScene();
+                rescueCount++;
+                cooldown = 18;
+                objectiveText();
+
+                if (rescueCount >= 5)
+                    finishScene();
             }
             break;
+
         case 6:
-            if(px>=31) finishScene();
+            if (playerX >= 275)
+                finishScene();
             break;
+
         case 7:
-            if((timer%120)==0) hurt();
-            if(px>=31) finishScene();
+            if ((timer % 210) == 0) hurt();
+            if (playerX >= 275) finishScene();
             break;
+
         case 8:
-            if(px>=30 && (pressed&BUTTON_B)) finishScene();
+            if (playerX >= 260 && (pressed & BUTTON_B))
+                finishScene();
             break;
     }
-    updateHud();
 }
 
-static void ending(void)
+static void endingScreen(void)
 {
-    clearScreen();
-    VDP_drawText("FIM",18,6);
-    VDP_drawText("FREAKADELICOS",13,10);
-    VDP_drawText("NAS PROFUNDEZAS DO NADA",8,13);
-    VDP_drawText("START VOLTA AO MENU",10,22);
-    state=ST_END;
+    clearAll();
+    drawImageBG(&img_ending);
+    setupText();
+
+    VDP_drawText("FIM", 18, 2);
+    VDP_drawText("FREAKADELICOS", 13, 23);
+    VDP_drawText("START VOLTA AO MENU", 10, 25);
+
+    state = ST_END;
 }
 
 int main(bool hardReset)
@@ -311,51 +441,77 @@ int main(bool hardReset)
     JOY_init();
     JOY_setSupport(PORT_1, JOY_SUPPORT_3BTN);
     SPR_init();
-    title();
 
-    while(TRUE)
+    titleScreen();
+
+    while (TRUE)
     {
-        u16 joy=JOY_readJoypad(JOY_1);
-        u16 pressed=joy & ~oldJoy;
+        u16 joy = JOY_readJoypad(JOY_1);
+        u16 pressed = joy & ~oldJoy;
 
-        switch(state)
+        switch (state)
         {
             case ST_TITLE:
-                if(pressed&(BUTTON_START|BUTTON_A)) selectChar();
+                if (pressed & (BUTTON_START | BUTTON_A))
+                    selectScreen();
                 break;
+
             case ST_SELECT:
-                if(pressed&BUTTON_LEFT){selected=(selected+4)%5;selectChar();}
-                else if(pressed&BUTTON_RIGHT){selected=(selected+1)%5;selectChar();}
-                else if(pressed&(BUTTON_START|BUTTON_A)) startScene(0);
+                if (pressed & BUTTON_LEFT)
+                {
+                    selected = (selected + 4) % 5;
+                    selectScreen();
+                }
+                else if (pressed & BUTTON_RIGHT)
+                {
+                    selected = (selected + 1) % 5;
+                    selectScreen();
+                }
+                else if (pressed & (BUTTON_START | BUTTON_A))
+                {
+                    startScene(0);
+                }
                 break;
+
             case ST_PLAY:
-                if(pressed&BUTTON_START)
+                if (pressed & BUTTON_START)
                 {
-                    VDP_drawText("PAUSA - START CONTINUA",8,11);
-                    state=ST_PAUSE;
+                    VDP_drawText("PAUSA - START CONTINUA", 8, 11);
+                    state = ST_PAUSE;
                 }
-                else gameplay(joy,pressed);
+                else
+                {
+                    gameplay(joy, pressed);
+                }
                 break;
+
             case ST_PAUSE:
-                if(pressed&BUTTON_START)
+                if (pressed & BUTTON_START)
                 {
-                    VDP_clearText(8,11,24);
-                    state=ST_PLAY;
+                    VDP_clearText(8, 11, 24);
+                    state = ST_PLAY;
                 }
                 break;
+
             case ST_CLEAR:
-                if(clearTimer) clearTimer--;
-                else if(scene<8) startScene(scene+1);
-                else ending();
+                if (clearTimer)
+                    clearTimer--;
+                else if (scene < 8)
+                    startScene(scene + 1);
+                else
+                    endingScreen();
                 break;
+
             case ST_END:
-                if(pressed&BUTTON_START) title();
+                if (pressed & BUTTON_START)
+                    titleScreen();
                 break;
         }
 
-        oldJoy=joy;
+        oldJoy = joy;
         SPR_update();
         SYS_doVBlankProcess();
     }
+
     return 0;
 }
