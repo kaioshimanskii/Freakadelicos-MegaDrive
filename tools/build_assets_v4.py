@@ -6,7 +6,7 @@ DATA = ROOT / "assets_v4"
 RES = ROOT / "res"
 RES.mkdir(exist_ok=True)
 
-BG_NAMES = {"cover", "stage", "encounter", "cave"}
+BG_NAMES = {"stage", "encounter", "cave"}\nWANTED = {"stage","encounter","cave","kaio","nico","rod","lucas","mila","guguwhite","guguyellow","turco"}
 
 def write_bmp(path, w, h, palette_rgb, pixels):
     pal = bytearray()
