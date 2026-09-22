@@ -518,3 +518,5 @@ int main(bool hardReset)
 
     return 0;
 }
+
+/* build trigger: first playable phase ROM */
