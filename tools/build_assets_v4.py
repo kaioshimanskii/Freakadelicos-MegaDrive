@@ -1,12 +1,15 @@
 from pathlib import Path
-import base64, zlib, struct
+import base64
+import zlib
+import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "assets_v4"
 RES = ROOT / "res"
 RES.mkdir(exist_ok=True)
 
-BG_NAMES = {"stage", "encounter", "cave"}\nWANTED = {"stage","encounter","cave","kaio","nico","rod","lucas","mila","guguwhite","guguyellow","turco"}
+BG_NAMES = {"stage", "encounter", "cave"}
+WANTED = {"stage", "encounter", "cave", "kaio", "nico", "rod", "lucas", "mila", "guguwhite", "guguyellow", "turco"}
 
 def write_bmp(path, w, h, palette_rgb, pixels):
     pal = bytearray()
@@ -35,17 +38,20 @@ def write_bmp(path, w, h, palette_rgb, pixels):
     path.write_bytes(out)
 
 def expand2(raw, w, h):
-    out_w, out_h = w * 2, h * 2
+    out_w = w * 2
+    out_h = h * 2
     out = bytearray(out_w * out_h)
+
     for y in range(h):
         for x in range(w):
             v = raw[y*w + x]
-            oy = y * 2
             ox = x * 2
+            oy = y * 2
             out[oy*out_w + ox] = v
             out[oy*out_w + ox + 1] = v
             out[(oy+1)*out_w + ox] = v
             out[(oy+1)*out_w + ox + 1] = v
+
     return bytes(out), out_w, out_h
 
 for dat in sorted(DATA.glob("*.dat")):
@@ -54,7 +60,12 @@ for dat in sorted(DATA.glob("*.dat")):
             continue
 
         name, sw, sh, payload = line.split("|", 3)
-        w, h = int(sw), int(sh)
+
+        if name not in WANTED:
+            continue
+
+        w = int(sw)
+        h = int(sh)
         blob = zlib.decompress(base64.b64decode(payload))
         palette = blob[:48]
         raw = blob[48:]
