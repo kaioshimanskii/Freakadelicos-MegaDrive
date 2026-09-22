@@ -175,8 +175,8 @@ static void spawnNPC(void)
     }
     else if (scene == 6)
     {
-        PAL_setPalette(PAL2, spr_guguwhite.palette->data, DMA);
-        npc = SPR_addSprite(&spr_guguwhite, 70, 164, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        PAL_setPalette(PAL2, spr_guguyellow.palette->data, DMA);
+        npc = SPR_addSprite(&spr_guguyellow, 70, 164, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
         SPR_setFrame(npc, 0);
     }
 }
